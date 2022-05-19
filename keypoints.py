@@ -25,7 +25,7 @@ while True:
 	#image = cv2.imread(image_path)
 
 	# resize image
-	width = 1000
+	width = 500
 	height = int(width / image.shape[1] * image.shape[0])
 	dsize = (width, height)
 
