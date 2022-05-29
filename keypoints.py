@@ -2,6 +2,7 @@ import sys
 import os
 import dlib
 import cv2
+import numpy as np
 
 predictor_path = "shape_predictor_68_face_landmarks.dat"
 
@@ -14,12 +15,15 @@ win.set_title("Face Landmarks Detection")
 video_path = "sx304-video-mrjo0.avi"
 video = cv2.VideoCapture(video_path)
 
-prev_landmarks = None
+frames_count = 0
+landmarks_flow = [[] for _ in range(68)]
 
 while True:
 	success, image = video.read()
 	if not success:
 		break
+
+	frames_count += 1
 
 	# open image with cv2
 	#image = cv2.imread(image_path)
@@ -39,7 +43,7 @@ while True:
 
 	# detect faces in image
 	faces = detector(image, 1)
-	print("Number of faces detected: {}".format(len(faces)))
+	#print("Number of faces detected: {}".format(len(faces)))
 
 	# TODO: What to do with multiple faces in 1 frame?
 	if len(faces) == 0:
@@ -48,32 +52,35 @@ while True:
 
 	face = faces[0]
 
-	print("Face: Left: {} Top: {} Right: {} Bottom: {}".format(
-		face.left(), face.top(), face.right(), face.bottom()))
+	#print("Face: Left: {} Top: {} Right: {} Bottom: {}".format(face.left(), face.top(), face.right(), face.bottom()))
 
 	# Get the landmarks/parts for the face
 	landmarks = predictor(image, face)
-	print("Part 0: {}, Part 1: {} ...".format(
-		landmarks.part(0), landmarks.part(1)))
+	#print("Part 0: {}, Part 1: {} ...".format(landmarks.part(0), landmarks.part(1)))
 
 	# TODO: What to do if the 68 landmarks are not detected?
 	if landmarks.num_parts != 68:
 		print("Could not detect landmarks")
 		break
 		
-
 	# draw landmarks
 	win.clear_overlay()
-	#for part in landmarks.parts():
-		#win.add_overlay_circle(part, 3)
+	for i, part in enumerate(landmarks.parts()):
+		landmarks_flow[i].append([part.x, part.y])
+		win.add_overlay_circle(part, 2)
 
-	if prev_landmarks:
-		lines = [dlib.line(prev_part, part) for (prev_part, part) in zip(prev_landmarks.parts(), landmarks.parts())]
-		
-		for line in lines:
-			win.add_overlay(line, dlib.rgb_pixel(255, 255, 255))
+# convert to numpy array
+landmarks_flow = np.array(landmarks_flow)
 
-	# save landmarks
-	prev_landmarks = landmarks
+for i, landmark_flow in enumerate(landmarks_flow):
+	distances = [np.linalg.norm(landmark_flow[i] - landmark_flow[i-1]) for i in range(1, frames_count)]
+
+	print("Landmark #{:02d}: Min {:.2f} Max {:.2f} Avg {:.2f} Std {:.2f}".format(
+		i + 1,
+		np.amin(distances),
+		np.amax(distances),
+		np.average(distances),
+		np.std(distances)
+	))
 
 dlib.hit_enter_to_continue()
